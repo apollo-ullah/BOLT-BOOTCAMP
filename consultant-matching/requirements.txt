@@ -1,0 +1,32 @@
+# Core Dependencies
+react==18.3.1
+react-dom==18.3.1
+react-router-dom==6.28.2
+firebase==11.2.0
+react-firebase-hooks==5.1.1
+react-icons==5.4.0
+@headlessui/react==2.2.0
+@heroicons/react==2.2.0
+
+# Development Dependencies
+typescript==5.6.2
+vite==6.0.5
+@vitejs/plugin-react-swc==3.5.0
+eslint==9.17.0
+eslint-plugin-react-hooks==5.0.0
+eslint-plugin-react-refresh==0.4.16
+@types/react==18.3.18
+@types/react-dom==18.3.5
+@types/react-router-dom==5.3.3
+@types/firebase==2.4.32
+
+# Styling
+tailwindcss==3.4.17
+autoprefixer==10.4.20
+postcss==8.5.1
+
+# Node.js version
+node>=18.0.0
+
+# Note: This project uses npm for package management. 
+# Install dependencies using: npm install 

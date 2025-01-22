@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary colors */
+  --color-primary-dark: #004d4d;
+  --color-primary: #00796b;
+  --color-primary-light: #4caf50;
+  --color-primary-lighter: #81c784;
+
+  /* Background gradients */
+  --gradient-primary: linear-gradient(
+    135deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary-light) 100%
+  );
+  --gradient-hover: linear-gradient(
+    135deg,
+    var(--color-primary-dark) 20%,
+    var(--color-primary-light) 80%
+  );
+
+  /* Text colors */
+  --color-text-dark: #1a1a1a;
+  --color-text-light: #ffffff;
+  --color-text-muted: #6b7280;
+  --color-text-on-gradient: rgba(255, 255, 255, 0.9);
+}
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply text-white bg-gradient-primary hover:bg-gradient-hover focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary-dark border border-primary-dark hover:bg-gray-50;
+  }
+
+  /* Updated input styles */
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  select {
+    @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    @apply hover:border-gray-400 transition-colors duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700;
+  }
+
+  .nav-gradient {
+    background: var(--gradient-primary);
+    color: var(--color-text-light);
+  }
+}
+
+/* Custom utility classes */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-primary-dark {
+  background-color: var(--color-primary-dark);
+}
+
+.bg-primary-light {
+  background-color: var(--color-primary-light);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-primary-dark {
+  color: var(--color-primary-dark);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.bg-gradient-primary {
+  background: var(--gradient-primary);
+}
+
+.hover\:bg-gradient-hover:hover {
+  background: var(--gradient-hover);
+}
+
+.text-on-gradient {
+  color: var(--color-text-on-gradient);
+}
+
+.text-on-gradient-muted {
+  color: rgba(255, 255, 255, 0.8);
+}

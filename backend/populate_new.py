@@ -10,7 +10,7 @@ def connect_to_db():
     """Create database connection"""
     try:
         connection = psycopg2.connect(
-            database="consultant_matcher",
+            database="postgres",
             user="postgres",
             password="aullah6",
             host="localhost",
@@ -185,10 +185,61 @@ def generate_project_dates():
 def load_data(connection):
     """Load and format data from CSV files into database"""
     try:
-        # Read the CSV file
-        projects_df = pd.read_csv("projects_fixed.csv")
+        # Create tables
+        cursor = connection.cursor()
 
-        print("\nColumn names in CSV:")
+        # Create projects table
+        cursor.execute(
+            """
+            DROP TABLE IF EXISTS projects CASCADE;
+            CREATE TABLE projects (
+                id SERIAL PRIMARY KEY,
+                project_name VARCHAR(255),
+                preferred_industry VARCHAR(255),
+                start_date DATE,
+                end_date DATE,
+                location_city VARCHAR(255),
+                location_country VARCHAR(255),
+                difficulty VARCHAR(50),
+                description TEXT,
+                required_skill1 VARCHAR(255),
+                required_skill2 VARCHAR(255),
+                required_skill3 VARCHAR(255)
+            );
+        """
+        )
+
+        # Create consultants table
+        cursor.execute(
+            """
+            DROP TABLE IF EXISTS consultants CASCADE;
+            CREATE TABLE consultants (
+                id SERIAL PRIMARY KEY,
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
+                email VARCHAR(255),
+                gender VARCHAR(50),
+                seniority_level VARCHAR(50),
+                skill1 VARCHAR(255),
+                skill2 VARCHAR(255),
+                skill3 VARCHAR(255),
+                years_of_experience INTEGER,
+                current_availability VARCHAR(255),
+                location_flexibility VARCHAR(255),
+                preffered_industries VARCHAR(255),
+                certifications TEXT,
+                hobbies TEXT,
+                ethnic VARCHAR(255),
+                past_project_industry VARCHAR(255)
+            );
+        """
+        )
+
+        connection.commit()
+
+        # Read and load projects data
+        projects_df = pd.read_csv("data/projects_fixed.csv")
+        print("\nColumn names in Projects CSV:")
         print(projects_df.columns.tolist())
 
         # Clean column names by stripping whitespace
@@ -196,40 +247,18 @@ def load_data(connection):
         print("\nCleaned column names:")
         print(projects_df.columns.tolist())
 
-        # Create a copy for date analysis
-        analysis_df = projects_df.copy()
-
-        # Update project dates
+        # Update project dates and process projects data
         for project in projects_df.itertuples():
             start_date, end_date = generate_project_dates()
             projects_df.at[project.Index, "start_date"] = start_date
             projects_df.at[project.Index, "end_date"] = end_date
-            analysis_df.at[project.Index, "start_date"] = start_date
-            analysis_df.at[project.Index, "end_date"] = end_date
 
-        # Convert dates to datetime for analysis only in analysis_df
-        analysis_df["start_date"] = pd.to_datetime(analysis_df["start_date"])
-        analysis_df["end_date"] = pd.to_datetime(analysis_df["end_date"])
-
-        print("\nData distribution summary:")
-        print("\nStart dates by year:")
-        print(analysis_df["start_date"].dt.year.value_counts().sort_index())
-
-        print("\nProject durations:")
-        durations = (analysis_df["end_date"] - analysis_df["start_date"]).dt.days
-        print("Average duration (days):", durations.mean())
-        print("Duration distribution:")
-        print("1-3 months:", len(durations[(durations >= 30) & (durations <= 90)]))
-        print("3-6 months:", len(durations[(durations > 90) & (durations <= 180)]))
-        print("8-12 months:", len(durations[(durations > 240) & (durations <= 365)]))
-        print("1-5 years:", len(durations[durations > 365]))
-
-        # Format locations
+        # Format locations for projects
         locations = projects_df["Location"].apply(format_location)
         projects_df["location_city"] = locations.apply(lambda x: x[0])
         projects_df["location_country"] = locations.apply(lambda x: x[1])
 
-        # Improve descriptions
+        # Improve project descriptions
         projects_df["description"] = projects_df.apply(
             lambda row: get_improved_description(
                 row["project_name"], row["preferred_industry"]
@@ -237,8 +266,16 @@ def load_data(connection):
             axis=1,
         )
 
-        # Select and reorder columns
-        projects_df = projects_df[
+        # Read and load consultants data
+        consultants_df = pd.read_csv("data/consultants_fixed.csv")
+        print("\nColumn names in Consultants CSV:")
+        print(consultants_df.columns.tolist())
+
+        # Create SQLAlchemy engine for DataFrame insertion
+        engine = create_engine("postgresql://postgres:aullah6@localhost:5432/postgres")
+
+        # Insert projects data
+        projects_df[
             [
                 "id",
                 "project_name",
@@ -253,37 +290,26 @@ def load_data(connection):
                 "required_skill2",
                 "required_skill3",
             ]
-        ]
+        ].to_sql("projects", engine, if_exists="append", index=False)
 
-        # Print data distribution summary
-        print("\nData distribution summary:")
-        print("\nStart dates by year:")
-        print(projects_df["start_date"].dt.year.value_counts().sort_index())
-        print("\nEnd dates by year:")
-        print(projects_df["end_date"].dt.year.value_counts().sort_index())
-        print("\nLocations distribution:")
-        print(projects_df["location_country"].value_counts())
-        print("\nDifficulty distribution:")
-        print(projects_df["difficulty"].value_counts())
+        # Insert consultants data
+        consultants_df.to_sql("consultants", engine, if_exists="append", index=False)
 
-        # Create SQLAlchemy engine
-        engine = create_engine(
-            "postgresql://postgres:aullah6@localhost:5432/consultant_matcher"
-        )
-
-        # Load data into database
-        projects_df.to_sql("projects", engine, if_exists="replace", index=False)
         print("\nData loaded successfully")
 
-        # Print sample of descriptions
+        # Print sample of project descriptions
         print("\nSample of project descriptions:")
         print(projects_df[["project_name", "description"]].head())
 
+        connection.commit()
+        print("\nAll data committed to database successfully")
+
     except Exception as e:
         print(f"Error loading data: {e}")
-        import traceback
-
-        print(traceback.format_exc())
+        connection.rollback()
+    finally:
+        if connection:
+            connection.commit()
 
 
 def main():

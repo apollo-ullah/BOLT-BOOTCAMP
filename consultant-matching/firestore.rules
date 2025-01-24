@@ -30,5 +30,23 @@ service cloud.firestore {
       allow delete: if isSignedIn() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'partner';
     }
+
+    // Add rate limiting
+    function isRateLimited() {
+      return request.time > resource.data.lastAccess + duration.value(60, 's');
+    }
+    
+    // Add data validation
+    function isValidProject() {
+      return request.resource.data.keys().hasAll(['title', 'description', 'budget']) &&
+             request.resource.data.budget is number &&
+             request.resource.data.budget > 0;
+    }
+
+    match /projects/{projectId} {
+      allow create: if isSignedIn() && 
+        isRateLimited() && 
+        isValidProject();
+    }
   }
 } 

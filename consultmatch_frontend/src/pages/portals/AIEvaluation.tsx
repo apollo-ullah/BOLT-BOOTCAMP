@@ -14,7 +14,7 @@ import {
   Alert,
   IconButton,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Send as SendIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Send as SendIcon, GroupAdd as GroupAddIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon } from '@mui/icons-material';
 import { Project, Consultant, RecommendedMatch } from '../../types';
 
 interface LocationState {
@@ -27,104 +27,125 @@ const AIEvaluation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = useParams();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
   const [input, setInput] = useState('');
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [staffingStatus, setStaffingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [staffingError, setStaffingError] = useState<string | null>(null);
   
   const { project, topCandidates, requestTopFive } = location.state as LocationState;
 
-  useEffect(() => {
-    // Generate initial AI analysis
-    const generateInitialAnalysis = async () => {
-      setLoading(true);
-      try {
-        const prompt = `You are an expert AI staffing assistant. Below, I will provide:
+  const generateInitialAnalysis = async () => {
+    if (analysisStarted) return;
+    setAnalysisStarted(true);
+    setLoading(true);
+    try {
+      const prompt = `You are participating in a staffing simulation exercise. This is practice data for demonstration purposes only.
 
-1. **Project Details**
+Role: Expert Staffing Assistant
+Task: Select the best team composition for a project using the provided sample candidate profiles.
+
+Project Details:
 - Name: ${project.project_name}
 - Difficulty: ${project.difficulty}
-- Preferred Industry: ${project.preferred_industry}
+- Industry: ${project.preferred_industry}
 - Required Skills: ${[project.required_skill1, project.required_skill2, project.required_skill3].filter(Boolean).join(', ')}
 
-**Your Task**: 
-Pick the **best 5-person team** that satisfies the project's required roles (intern/junior/mid-level/senior) according to the difficulty constraints:
+SIMULATION REQUIREMENTS:
+For this ${project.difficulty.toUpperCase()} difficulty project simulation, select exactly:
+${project.difficulty.toLowerCase() === 'expert' ? 
+  '2 SENIOR consultants, 2 MID-LEVEL consultants, 1 JUNIOR consultant (NO interns)' :
+  project.difficulty.toLowerCase() === 'hard' ? 
+  '1 SENIOR consultant, 2 MID-LEVEL consultants, 2 JUNIOR consultants (NO interns)' :
+  project.difficulty.toLowerCase() === 'medium' ? 
+  '1 SENIOR consultant, 1 MID-LEVEL consultant, 2 JUNIOR consultants, 1 INTERN' :
+  '1 SENIOR consultant, 1 MID-LEVEL consultant, 1 JUNIOR consultant, 2 INTERNS'}
 
-- **easy** → 2 interns, 1 junior, 1 mid-level, 1 senior  
-- **medium** → 1 intern, 2 juniors, 1 mid-level, 1 senior  
-- **hard** → 0 interns, 2 juniors, 2 mid-level, 1 senior  
-- **expert** → 0 interns, 1 junior, 2 mid-level, 2 seniors  
-
-**Additionally**:
-- Prefer candidates who have **industry experience** that matches the project's **preferred industry**.
-- Strive for **diversity** in the team (e.g., gender, background) unless it severely compromises overall skill/performance.
-- Also consider **synergy**: if certain candidates share hobbies or personal interests, that might improve team chemistry.
-
-**Top 10 Candidates**:
-${topCandidates.map((match, index) => `
-${index + 1}. **Name**: ${match.consultant.first_name} ${match.consultant.last_name}
-   - Seniority: ${match.consultant.seniority_level}
-   - Skills: ${match.consultant.skill1}, ${match.consultant.skill2}, ${match.consultant.skill3}
-   - Past Industry: ${match.consultant.past_project_industry}
-   - Years of Experience: ${match.consultant.years_of_experience}
-   - Match Score: ${Math.round(match.match_score * 100)}%
-   - Hobbies: ${match.consultant.hobbies || 'Not specified'}
-   - Key Strengths: ${match.match_reasons.join(', ')}
+Sample Candidates for Selection:
+${topCandidates
+  .sort((a, b) => {
+    const seniorityOrder: Record<string, number> = { 
+      'senior': 4, 
+      'mid-level': 3, 
+      'junior': 2, 
+      'intern': 1 
+    };
+    const aLevel = a.consultant.seniority_level.toLowerCase();
+    const bLevel = b.consultant.seniority_level.toLowerCase();
+    return (seniorityOrder[bLevel] || 0) - (seniorityOrder[aLevel] || 0);
+  })
+  .map((match, index) => `
+Sample Profile ${index + 1}: ${match.consultant.first_name} ${match.consultant.last_name}
+• Level: ${match.consultant.seniority_level.toUpperCase()}
+• Experience: ${match.consultant.years_of_experience} years
+• Skills: ${match.consultant.skill1}, ${match.consultant.skill2}, ${match.consultant.skill3}
+• Background: ${match.consultant.past_project_industry}
+• Fit Score: ${Math.round(match.match_score * 100)}%
 `).join('\n')}
 
-**Now,** please select the **top 5** according to the rules. Provide your final answer in this format:
+IMPORTANT: This is a simulation exercise. All profiles are sample data for training purposes.
 
-🎯 **Selected Team Composition**
-[List the 5 selected candidates with their roles]
+Your task is to create a recommended team composition following this format:
 
-💡 **Selection Rationale**
-[Explain why each candidate was chosen]
+🎯 Recommended Team (Simulation)
+[List 5 sample profiles in this format:]
+1. [Name] - [LEVEL]
+   Skills: [Relevant skills]
+   Project Role: [Main responsibility]
 
-🤝 **Team Synergy Analysis**
-[Discuss how the team will work together]
+💡 Team Selection Logic
+[Explain the selection rationale]
 
-⚠️ **Potential Risks & Mitigation**
-[Identify any gaps or risks and how to address them]`;
+🤝 Team Dynamic
+[Describe how the team levels and skills complement each other]
 
-        console.log('Sending request to Ollama...');
-        const response = await fetch('http://127.0.0.1:11434/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: "llama3.2:1b",
-            prompt: prompt,
-            stream: false,
-            temperature: 0.8,
-            top_p: 0.95
-          }),
+⚠️ Risk Assessment
+[Note any potential gaps or challenges]
+
+Remember: This is a simulation - please proceed with team selection using the sample profiles provided.`;
+
+      console.log('Starting AI analysis generation...');
+      const response = await fetch('http://127.0.0.1:11434/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "llama3.2:1b",
+          prompt: prompt,
+          stream: false,
+          temperature: 0.8,
+          top_p: 0.95
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Ollama API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Ollama API error:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
-          throw new Error(`Failed to generate AI analysis: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('Received response from Ollama:', data);
-        setConversation([{ 
-          role: 'assistant', 
-          content: data.response
-        }]);
-      } catch (err) {
-        console.error('Error details:', err);
-        setError(err instanceof Error ? err.message : 'Failed to generate AI analysis');
-      } finally {
-        setLoading(false);
+        throw new Error(`Failed to generate AI analysis: ${errorText}`);
       }
-    };
 
+      const data = await response.json();
+      console.log('Received response from Ollama:', data);
+      setConversation([{ 
+        role: 'assistant', 
+        content: data.response
+      }]);
+    } catch (err) {
+      console.error('Error details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate AI analysis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     generateInitialAnalysis();
   }, [project, topCandidates]);
 
@@ -184,85 +205,262 @@ ${index + 1}. ${match.consultant.first_name} ${match.consultant.last_name}
   };
 
   const formatAIResponse = (content: string) => {
-    // Split content into sections based on double newlines or section headers with **
-    const sections = content.split(/(?:\n\n|\*\*)/g).filter(Boolean);
+    // Helper function to clean markdown
+    const cleanText = (text: string) => {
+      return text.replace(/\*\*/g, '').trim();
+    };
+
+    // Split content into sections
+    const sections = content.split('\n').filter(Boolean);
     
-    return sections.map((section, index) => {
-      // Check if this is a header section
-      const isHeader = section.includes(':') && section.length < 100;
-      
-      // Format bullet points and sub-points
-      const formattedContent = section
-        .split('\n')
-        .map(line => {
-          if (line.trim().startsWith('*')) {
+    return (
+      <Box sx={{ p: 2 }}>
+        {sections.map((line, idx) => {
+          const trimmedLine = cleanText(line);
+          if (!trimmedLine) return null;
+
+          // Section headers (with emojis)
+          if (trimmedLine.includes('Selected Team Composition') || 
+              trimmedLine.includes('Selection Rationale') || 
+              trimmedLine.includes('Team Synergy Analysis') || 
+              trimmedLine.includes('Potential Risks')) {
             return (
-              <Typography 
-                key={line} 
-                sx={{ 
-                  ml: 2, 
-                  my: 1,
-                  fontWeight: line.includes('Candidate') ? 'bold' : 'normal'
+              <Typography
+                key={idx}
+                variant="h6"
+                sx={{
+                  color: '#1976d2',
+                  fontWeight: 600,
+                  mt: 4,
+                  mb: 2,
+                  borderBottom: '2px solid #e3f2fd',
+                  pb: 1
                 }}
               >
-                {line.trim().substring(1).trim()}
-              </Typography>
-            );
-          } else if (line.trim().startsWith('+')) {
-            return (
-              <Typography 
-                key={line} 
-                sx={{ 
-                  ml: 4, 
-                  my: 0.5,
-                  color: 'text.secondary',
-                  fontSize: '0.95rem'
-                }}
-              >
-                {line.trim().substring(1).trim()}
+                {trimmedLine}
               </Typography>
             );
           }
+
+          // Numbered team members
+          if (/^\d+\./.test(trimmedLine) && trimmedLine.includes('Seniority:')) {
+            const [name, role] = trimmedLine.split('Seniority:').map(s => s.trim());
+            return (
+              <Box key={idx} sx={{ mb: 2 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 600,
+                    color: '#2196f3',
+                    display: 'block',
+                    mb: 0.5
+                  }}
+                >
+                  {name}
+                </Typography>
+                <Typography
+                  sx={{
+                    color: 'text.secondary',
+                    ml: 2
+                  }}
+                >
+                  Seniority: {role}
+                </Typography>
+              </Box>
+            );
+          }
+
+          // Numbered explanations
+          if (/^\d+\./.test(trimmedLine)) {
+            const [number, ...rest] = trimmedLine.split('.');
+            return (
+              <Box key={idx} sx={{ mb: 2, display: 'flex' }}>
+                <Typography
+                  sx={{
+                    color: '#1976d2',
+                    fontWeight: 600,
+                    minWidth: '24px'
+                  }}
+                >
+                  {number}.
+                </Typography>
+                <Typography sx={{ ml: 1 }}>
+                  {rest.join('.').trim()}
+                </Typography>
+              </Box>
+            );
+          }
+
+          // Regular paragraphs
           return (
-            <Typography 
-              key={line} 
-              sx={{ 
-                my: 0.5,
-                fontWeight: isHeader ? 'bold' : 'normal',
-                fontSize: isHeader ? '1.1rem' : '1rem'
+            <Typography
+              key={idx}
+              paragraph
+              sx={{
+                mb: 2,
+                lineHeight: 1.7,
+                color: 'text.primary',
+                ml: /^[A-Za-z]/.test(trimmedLine) ? 0 : 3 // Indent continued lines
               }}
             >
-              {line.trim()}
+              {trimmedLine}
             </Typography>
           );
+        })}
+      </Box>
+    );
+  };
+
+  const handleConfirmStaffing = async () => {
+    if (!project || !topCandidates) {
+      setStaffingError('Missing project or candidate information');
+      return;
+    }
+
+    setStaffingStatus('loading');
+    setStaffingError(null);
+
+    try {
+      const aiResponse = conversation[0]?.content || '';
+      console.log('Full AI Response:', aiResponse);
+      
+      // Find the recommended team section
+      const teamSectionStart = aiResponse.indexOf('🎯 Recommended Team');
+      if (teamSectionStart === -1) {
+        console.log('Could not find "🎯 Recommended Team" section');
+        throw new Error('Could not find team recommendations in AI response');
+      }
+
+      const teamSection = aiResponse.slice(teamSectionStart);
+      console.log('Team Section:', teamSection);
+
+      // Extract names from the team section using a more flexible pattern
+      const selectedNames = teamSection
+        .split('\n')
+        .filter(line => {
+          const isNumberedLine = /^\d+\./.test(line);
+          console.log('Line:', line, 'Is numbered:', isNumberedLine);
+          return isNumberedLine;
+        })
+        .map(line => {
+          console.log('Processing line:', line);
+          // Try different patterns to extract the name
+          const patterns = [
+            /^\d+\.\s+([A-Za-z]+\s+[A-Za-z]+)(?:\s*-|$)/,  // Name followed by dash or end
+            /^\d+\.\s+([A-Za-z]+\s+[A-Za-z]+)/,            // Just the name after number
+          ];
+          
+          for (const pattern of patterns) {
+            const match = line.match(pattern);
+            if (match) {
+              console.log('Found name:', match[1].trim());
+              return match[1].trim();
+            }
+          }
+          console.log('No name found in line');
+          return null;
+        })
+        .filter((name): name is string => {
+          const isValid = Boolean(name);
+          console.log('Name validity:', name, isValid);
+          return isValid;
         });
 
-      return (
-        <Box key={index} sx={{ mb: 3 }}>
-          {formattedContent}
-        </Box>
-      );
-    });
+      console.log('Extracted names:', selectedNames);
+      console.log('Available candidates:', topCandidates.map(c => 
+        `${c.consultant.first_name} ${c.consultant.last_name}`
+      ));
+
+      // Find matching consultants from topCandidates
+      const selectedConsultants = selectedNames
+        .map(name => {
+          const consultant = topCandidates.find(c => {
+            const candidateName = `${c.consultant.first_name} ${c.consultant.last_name}`.toLowerCase();
+            const matchName = name.toLowerCase();
+            console.log('Comparing:', candidateName, 'with', matchName);
+            return candidateName === matchName;
+          });
+          
+          if (!consultant) {
+            console.log(`Could not find consultant matching name: ${name}`);
+          } else {
+            console.log(`Found consultant for ${name}:`, consultant);
+          }
+          return consultant;
+        })
+        .filter(Boolean);
+
+      console.log('Final selected consultants:', selectedConsultants);
+
+      if (selectedConsultants.length !== 5) {
+        throw new Error(`Could not identify exactly 5 selected consultants from the AI response (found ${selectedConsultants.length}). Names found: ${selectedNames.join(', ')}`);
+      }
+
+      const response = await fetch(`http://127.0.0.1:8002/api/projects/${project.id}/staff`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          consultant_ids: selectedConsultants.map(c => c!.consultant.id)
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to staff project: ${errorData}`);
+      }
+
+      setStaffingStatus('success');
+      
+      // Wait 2 seconds then navigate back to project gallery
+      setTimeout(() => {
+        navigate('/projects');
+      }, 2000);
+    } catch (err) {
+      console.error('Error staffing project:', err);
+      setStaffingStatus('error');
+      setStaffingError(err instanceof Error ? err.message : 'Failed to staff project');
+    }
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3 }}>
+    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
+      {/* Header Section */}
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
+          variant="outlined"
         >
-          Back to Recommendations
+          Back to Project
         </Button>
+        <Typography variant="h5">
+          AI Analysis for {project.project_name}
+        </Typography>
       </Box>
 
-      <Typography variant="h4" gutterBottom>
-        AI-Assisted Evaluation
-      </Typography>
+      {/* Loading and Error States */}
+      {loading && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <CircularProgress size={24} />
+            <Typography>
+              Generating AI analysis... This may take up to 30 seconds.
+            </Typography>
+          </Box>
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
+      {/* Main Content Grid */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Card>
+        {/* Left Column - Project Details */}
+        <Grid item xs={12} md={3}>
+          <Card sx={{ position: 'sticky', top: 24 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Project Details
@@ -290,67 +488,165 @@ ${index + 1}. ${match.consultant.first_name} ${match.consultant.last_name}
                   </Typography>
                   <Typography>{project.preferred_industry}</Typography>
                 </Box>
+                {/* Staffing Action Button */}
+                {conversation.length > 0 && staffingStatus === 'idle' && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleConfirmStaffing}
+                    startIcon={<GroupAddIcon />}
+                    fullWidth
+                  >
+                    Staff Top 5 Candidates
+                  </Button>
+                )}
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={8}>
-          <Card sx={{ height: '70vh', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ flexGrow: 1, overflow: 'auto' }}>
-              {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {error}
-                </Alert>
-              )}
-              {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                  <CircularProgress />
+        {/* Right Column - AI Conversation */}
+        <Grid item xs={12} md={9}>
+          <Card sx={{ minHeight: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+            {/* Conversation History */}
+            <CardContent sx={{ flexGrow: 1, overflow: 'auto', p: 3 }}>
+              {conversation.map((message, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    backgroundColor: message.role === 'assistant' ? 'action.hover' : 'transparent',
+                    p: 2,
+                    borderRadius: 2,
+                    mb: 2,
+                    maxWidth: '100%'
+                  }}
+                >
+                  {message.role === 'assistant' ? (
+                    formatAIResponse(message.content)
+                  ) : (
+                    <Typography sx={{ color: 'primary.main', fontWeight: 500 }}>
+                      {message.content}
+                    </Typography>
+                  )}
                 </Box>
-              )}
-              <Stack spacing={2}>
-                {conversation.map((message, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      backgroundColor: message.role === 'assistant' ? 'action.hover' : 'transparent',
-                      p: 2,
-                      borderRadius: 1,
-                    }}
-                  >
-                    {message.role === 'assistant' ? (
-                      formatAIResponse(message.content)
-                    ) : (
-                      <Typography>{message.content}</Typography>
-                    )}
-                  </Box>
-                ))}
-              </Stack>
+              ))}
             </CardContent>
             
-            <Divider />
-            
-            <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Ask a follow-up question..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                disabled={loading}
-              />
-              <IconButton 
-                color="primary" 
-                onClick={handleSendMessage}
-                disabled={loading || !input.trim()}
-              >
-                <SendIcon />
-              </IconButton>
+            {/* Input Section */}
+            <Box sx={{ 
+              p: 2, 
+              borderTop: 1, 
+              borderColor: 'divider',
+              backgroundColor: 'background.paper'
+            }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Ask a follow-up question..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={loading}
+                  size="small"
+                  sx={{ backgroundColor: 'white' }}
+                />
+                <IconButton 
+                  color="primary" 
+                  onClick={handleSendMessage}
+                  disabled={loading || !input.trim()}
+                  sx={{ 
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'primary.dark',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'action.disabledBackground',
+                    }
+                  }}
+                >
+                  <SendIcon />
+                </IconButton>
+              </Box>
             </Box>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Staffing Status Modals */}
+      {staffingStatus === 'loading' && (
+        <Box sx={{ 
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: 'background.paper',
+          p: 4,
+          borderRadius: 2,
+          boxShadow: 24,
+          textAlign: 'center'
+        }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>
+            Staffing consultants to project...
+          </Typography>
+        </Box>
+      )}
+
+      {staffingStatus === 'success' && (
+        <Box sx={{ 
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: 'background.paper',
+          p: 4,
+          borderRadius: 2,
+          boxShadow: 24,
+          textAlign: 'center'
+        }}>
+          <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Successfully staffed consultants!
+          </Typography>
+          <Typography color="text.secondary">
+            Redirecting to project gallery...
+          </Typography>
+        </Box>
+      )}
+
+      {staffingStatus === 'error' && (
+        <Box sx={{ 
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: 'background.paper',
+          p: 4,
+          borderRadius: 2,
+          boxShadow: 24,
+          textAlign: 'center'
+        }}>
+          <ErrorIcon color="error" sx={{ fontSize: 48 }} />
+          <Typography variant="h6" color="error" sx={{ mt: 2 }}>
+            Failed to staff consultants
+          </Typography>
+          {staffingError && (
+            <Typography color="text.secondary">
+              {staffingError}
+            </Typography>
+          )}
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setStaffingStatus('idle')}
+            sx={{ mt: 2 }}
+          >
+            Try Again
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

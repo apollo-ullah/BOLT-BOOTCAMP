@@ -20,7 +20,11 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, CheckCircleOutline, AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material';
+import { 
+  ArrowBack as ArrowBackIcon, 
+  CheckCircleOutline, 
+  AutoAwesome as AutoAwesomeIcon 
+} from '@mui/icons-material';
 
 interface Project {
   id: number;
@@ -287,11 +291,11 @@ const StaffProject = () => {
                                   skill.toLowerCase().includes(ps.toLowerCase()));
   };
 
-  const renderSkillChip = (skill: string, projectSkills: string[]) => {
+  const renderSkillChip = (skill: string, projectSkills: string[], index: number, consultantId: number) => {
     const isMatched = isSkillMatch(skill, projectSkills);
     return (
       <Chip 
-        key={skill}
+        key={`${consultantId}-${skill}-${index}`}
         label={skill}
         size="small"
         sx={{ 
@@ -310,7 +314,7 @@ const StaffProject = () => {
   };
 
   const renderRecommendations = () => {
-    if (!recommendedMatches.length) {
+    if (!recommendedMatches || recommendedMatches.length === 0) {
       return (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="text.secondary">
@@ -322,15 +326,30 @@ const StaffProject = () => {
 
     return (
       <Box>
-        <Typography variant="h5" gutterBottom>
-          Top Recommended Consultants
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">
+            Top Recommended Consultants
+          </Typography>
+          <Button
+            variant="contained"
+            endIcon={<AutoAwesomeIcon />}
+            onClick={() => navigate('/ai-evaluation', { 
+              state: { 
+                project, 
+                topCandidates: recommendedMatches,
+                requestTopFive: true
+              } 
+            })}
+          >
+            Get AI Analysis for Top 5
+          </Button>
+        </Box>
         <Typography color="text.secondary" paragraph>
           Found {recommendedMatches.length} potential matches based on skills, experience, and availability.
         </Typography>
 
         <Grid container spacing={3}>
-          {recommendedMatches.map(({ consultant, score, reasons }, index) => (
+          {recommendedMatches.map(({ consultant, match_score, match_reasons }, index) => (
             <Grid item xs={12} md={6} key={consultant.id}>
               <Card 
                 sx={{ 
@@ -345,7 +364,6 @@ const StaffProject = () => {
                   }
                 }}
               >
-                {/* Top rank indicator for top 3 */}
                 {index < 3 && (
                   <Box
                     sx={{
@@ -380,23 +398,7 @@ const StaffProject = () => {
 
                   {/* Match Score */}
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Match Score
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={score * 100} 
-                        sx={{ 
-                          flexGrow: 1,
-                          height: 8,
-                          borderRadius: 1
-                        }}
-                      />
-                      <Typography variant="body2" sx={{ minWidth: 45 }}>
-                        {Math.round(score * 100)}%
-                      </Typography>
-                    </Box>
+                    {renderMatchScore(match_score)}
                   </Box>
 
                   {/* Skills */}
@@ -407,17 +409,17 @@ const StaffProject = () => {
                     <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
                       {[consultant.skill1, consultant.skill2, consultant.skill3]
                         .filter(Boolean)
-                        .map((skill, i) => (
-                          <Chip 
-                            key={i} 
-                            label={skill} 
-                            size="small"
-                            sx={{ 
-                              bgcolor: 'background.default',
-                              '& .MuiChip-label': { px: 1 }
-                            }}
-                          />
-                      ))}
+                        .map((skill, idx) => renderSkillChip(
+                          skill, 
+                          project ? [
+                            project.required_skill1,
+                            project.required_skill2,
+                            project.required_skill3
+                          ].filter(Boolean) : [],
+                          idx,
+                          consultant.id
+                        ))
+                      }
                     </Stack>
                   </Box>
 
@@ -427,8 +429,8 @@ const StaffProject = () => {
                       Match Reasons
                     </Typography>
                     <List dense disablePadding>
-                      {reasons.map((reason, i) => (
-                        <ListItem key={i} disablePadding sx={{ mb: 0.5 }}>
+                      {match_reasons.map((reason, i) => (
+                        <ListItem key={`${consultant.id}-reason-${i}`} disablePadding sx={{ mb: 0.5 }}>
                           <ListItemIcon sx={{ minWidth: 24 }}>
                             <CheckCircleOutline color="success" fontSize="small" />
                           </ListItemIcon>
@@ -479,7 +481,7 @@ const StaffProject = () => {
     switch (activeStep) {
       case 0:
         return (
-          <>
+          <Box>
             {renderProjectDetails()}
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
@@ -489,8 +491,9 @@ const StaffProject = () => {
                 Continue to Recommendations
               </Button>
             </Box>
-          </>
+          </Box>
         );
+
       case 1:
         return (
           <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -509,8 +512,10 @@ const StaffProject = () => {
             </Button>
           </Box>
         );
+
       case 2:
         return renderRecommendations();
+
       default:
         return null;
     }
@@ -545,19 +550,14 @@ const StaffProject = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-        >
-          Back to Projects
-        </Button>
-      </Box>
-
-      <Typography variant="h4" gutterBottom>
-        Staff Project
-      </Typography>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate('/projects')}
+        sx={{ mb: 3 }}
+      >
+        Back to Projects
+      </Button>
 
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
         {steps.map((label) => (

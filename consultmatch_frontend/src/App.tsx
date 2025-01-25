@@ -100,7 +100,7 @@ const App = () => {
             }
           />
           <Route
-            path="/ai-evaluation/:projectId"
+            path="/ai-evaluation"
             element={
               <ProtectedRoute>
                 <AIEvaluation />

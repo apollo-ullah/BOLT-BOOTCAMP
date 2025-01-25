@@ -35,7 +35,7 @@ import {
   TimelineDot,
   TimelineContent
 } from '@mui/lab';
-import { Visibility as VisibilityIcon, Close as CloseIcon, Search as SearchIcon, SwapVert as SwapVertIcon, Add as AddIcon, Edit as EditIcon, Group as GroupIcon } from '@mui/icons-material';
+import { Visibility as VisibilityIcon, Close as CloseIcon, Search as SearchIcon, SwapVert as SwapVertIcon, Add as AddIcon, Edit as EditIcon, Group as GroupIcon, Person as PersonIcon } from '@mui/icons-material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -76,6 +76,7 @@ interface Project {
   required_skill1: string;
   required_skill2: string;
   required_skill3: string;
+  staffed_consultants?: Consultant[];
 }
 
 interface Consultant {
@@ -214,7 +215,30 @@ export default function ProjectGallery() {
         const paginatedItems = filteredData.slice(startIndex, endIndex);
         console.log('Final paginated items:', paginatedItems); // Debug log
         
-        setProjects(paginatedItems);
+        // Fetch staffed consultants for each project
+        const projectsWithStaff = await Promise.all(
+          paginatedItems.map(async (project: Project) => {
+            try {
+              const staffResponse = await fetch(`http://127.0.0.1:8002/projects/${project.id}/staff`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                mode: 'cors'
+              });
+              if (staffResponse.ok) {
+                const staffData = await staffResponse.json();
+                return { ...project, staffed_consultants: staffData };
+              }
+              return project;
+            } catch (err) {
+              console.error(`Error fetching staff for project ${project.id}:`, err);
+              return project;
+            }
+          })
+        );
+        
+        setProjects(projectsWithStaff);
         setConsultants([]);
       }
     } catch (err) {
@@ -418,6 +442,30 @@ export default function ProjectGallery() {
                     {project.description}
                   </Typography>
                 </Box>
+
+                {/* Add staffed consultants section */}
+                {project.staffed_consultants && project.staffed_consultants.length > 0 && (
+                  <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Staffed Consultants
+                    </Typography>
+                    <Stack spacing={1}>
+                      {project.staffed_consultants.map((consultant) => (
+                        <Box key={consultant.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PersonIcon fontSize="small" color="action" />
+                          <Typography variant="body2">
+                            {consultant.first_name} {consultant.last_name}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            label={consultant.seniority_level}
+                            sx={{ ml: 'auto' }}
+                          />
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
               </Stack>
 
               {canManageProjects && (

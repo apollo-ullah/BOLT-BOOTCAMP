@@ -447,3 +447,85 @@ async def recommend_consultants_phase2(project_id: int):
     finally:
         cur.close()
         conn.close()
+
+class StaffingRequest(BaseModel):
+    project_id: int
+    consultant_ids: List[int]
+
+@app.post("/projects/{project_id}/staff")
+async def staff_project(project_id: int, staffing: StaffingRequest):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # First check if project exists
+        cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+        project = cur.fetchone()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Create project_staffing table if it doesn't exist
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS project_staffing (
+                id SERIAL PRIMARY KEY,
+                project_id INTEGER REFERENCES projects(id),
+                consultant_id INTEGER REFERENCES consultants(id),
+                staffed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(project_id, consultant_id)
+            );
+        """)
+        
+        # Staff each consultant to the project
+        for consultant_id in staffing.consultant_ids:
+            cur.execute("""
+                INSERT INTO project_staffing (project_id, consultant_id)
+                VALUES (%s, %s)
+                ON CONFLICT (project_id, consultant_id) DO NOTHING
+            """, (project_id, consultant_id))
+        
+        conn.commit()
+        
+        # Return the staffed consultants
+        cur.execute("""
+            SELECT c.* FROM consultants c
+            JOIN project_staffing ps ON c.id = ps.consultant_id
+            WHERE ps.project_id = %s
+        """, (project_id,))
+        staffed_consultants = cur.fetchall()
+        return staffed_consultants
+        
+    except Exception as e:
+        print("Error staffing project:", str(e))
+        print("Traceback:", traceback.format_exc())
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to staff project: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/projects/{project_id}/staff")
+async def get_project_staff(project_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # First check if project exists
+        cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+        project = cur.fetchone()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Get all staffed consultants for the project
+        cur.execute("""
+            SELECT c.*, ps.staffed_at FROM consultants c
+            JOIN project_staffing ps ON c.id = ps.consultant_id
+            WHERE ps.project_id = %s
+            ORDER BY ps.staffed_at DESC
+        """, (project_id,))
+        staffed_consultants = cur.fetchall()
+        return staffed_consultants
+        
+    except Exception as e:
+        print("Error getting project staff:", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to get project staff: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()

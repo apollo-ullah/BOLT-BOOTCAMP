@@ -283,7 +283,7 @@ async def recommend_consultants(project_id: int):
             match_score = 0.0
             match_reasons = []
 
-            # Check skill matches
+            # Check skill matches (more lenient matching)
             project_skills = [
                 project['required_skill1'].lower(),
                 project['required_skill2'].lower() if project['required_skill2'] else None,
@@ -295,37 +295,48 @@ async def recommend_consultants(project_id: int):
                 consultant['skill3'].lower() if consultant['skill3'] else None
             ]
 
-            skill_matches = sum(
-                1 for ps in project_skills if ps and any(cs and ps in cs for cs in consultant_skills)
-            )
+            # More lenient skill matching
+            skill_matches = 0
+            for ps in project_skills:
+                if ps:
+                    for cs in consultant_skills:
+                        if cs and (ps in cs or cs in ps):
+                            skill_matches += 1
+                            break
             
             if skill_matches > 0:
                 score_boost = skill_matches / len([s for s in project_skills if s])
                 match_score += score_boost * 0.5  # Skills are 50% of the score
                 match_reasons.append(f"Matches {skill_matches} required skills")
 
-            # Check industry match
-            if project['preferred_industry'].lower() in (consultant['past_project_industry'] or '').lower():
+            # More lenient industry matching
+            project_industry = project['preferred_industry'].lower()
+            consultant_industry = (consultant['past_project_industry'] or '').lower()
+            
+            # Check for partial industry matches
+            if (project_industry in consultant_industry or 
+                consultant_industry in project_industry or
+                any(word in consultant_industry for word in project_industry.split())):
                 match_score += 0.3  # Industry match is 30% of the score
                 match_reasons.append("Has experience in the required industry")
 
             # Check seniority based on project difficulty
             difficulty_seniority_map = {
-                'easy': ['junior', 'mid-level', 'senior', 'expert'],
-                'medium': ['mid-level', 'senior', 'expert'],
-                'hard': ['senior', 'expert'],
-                'expert': ['expert']
+                'easy': ['intern', 'junior', 'mid-level', 'senior', 'expert'],
+                'medium': ['junior', 'mid-level', 'senior', 'expert'],
+                'hard': ['mid-level', 'senior', 'expert'],
+                'expert': ['senior', 'expert']
             }
             
             if consultant['seniority_level'].lower() in difficulty_seniority_map[project['difficulty'].lower()]:
                 match_score += 0.2  # Seniority match is 20% of the score
                 match_reasons.append(f"Seniority level ({consultant['seniority_level']}) matches project difficulty")
 
-            # Only include consultants with a match score above 0.3
-            if match_score >= 0.3:
+            # Lower the threshold for including consultants
+            if match_score >= 0.2:  # Changed from 0.3 to 0.2
                 matches.append({
                     "consultant": consultant,
-                    "match_score": match_score,
+                    "match_score": round(match_score, 2),  # Round score to 2 decimal places
                     "match_reasons": match_reasons
                 })
 

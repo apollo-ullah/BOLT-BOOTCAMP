@@ -10,9 +10,8 @@ def connect_to_db():
     """Create database connection"""
     try:
         connection = psycopg2.connect(
-            database="postgres",
-            user="postgres",
-            password="aullah6",
+            database="consultant_matcher",
+            user="adyanullah",
             host="localhost",
             port="5432",
         )
@@ -247,62 +246,58 @@ def load_data(connection):
         print("\nCleaned column names:")
         print(projects_df.columns.tolist())
 
-        # Update project dates and process projects data
+        # Create SQLAlchemy engine for bulk insert
+        engine = create_engine('postgresql://adyanullah@localhost:5432/consultant_matcher')
+
+        # Drop the id column before inserting
+        if 'id' in projects_df.columns:
+            projects_df = projects_df.drop('id', axis=1)
+
+        # Process projects data
+        processed_projects = []
         for project in projects_df.itertuples():
             start_date, end_date = generate_project_dates()
-            projects_df.at[project.Index, "start_date"] = start_date
-            projects_df.at[project.Index, "end_date"] = end_date
+            city, country = format_location(project.Location)
+            description = get_improved_description(project.project_name, project.preferred_industry)
+            
+            # Sample project descriptions
+            if random.random() < 0.05:  # Show 5% of descriptions
+                print("\nSample project description:")
+                print(f"Project: {project.project_name}")
+                print(f"Description: {description}")
+            
+            processed_projects.append({
+                'project_name': project.project_name,
+                'preferred_industry': project.preferred_industry,
+                'start_date': start_date,
+                'end_date': end_date,
+                'location_city': city,
+                'location_country': country,
+                'difficulty': project.difficulty,
+                'description': description,
+                'required_skill1': project.required_skill1,
+                'required_skill2': project.required_skill2,
+                'required_skill3': project.required_skill3
+            })
 
-        # Format locations for projects
-        locations = projects_df["Location"].apply(format_location)
-        projects_df["location_city"] = locations.apply(lambda x: x[0])
-        projects_df["location_country"] = locations.apply(lambda x: x[1])
-
-        # Improve project descriptions
-        projects_df["description"] = projects_df.apply(
-            lambda row: get_improved_description(
-                row["project_name"], row["preferred_industry"]
-            ),
-            axis=1,
-        )
+        # Convert processed projects to DataFrame and insert
+        processed_df = pd.DataFrame(processed_projects)
+        processed_df.to_sql('projects', engine, if_exists='append', index=False)
 
         # Read and load consultants data
         consultants_df = pd.read_csv("data/consultants_fixed.csv")
         print("\nColumn names in Consultants CSV:")
         print(consultants_df.columns.tolist())
 
-        # Create SQLAlchemy engine for DataFrame insertion
-        engine = create_engine("postgresql://postgres:aullah6@localhost:5432/postgres")
-
-        # Insert projects data
-        projects_df[
-            [
-                "id",
-                "project_name",
-                "preferred_industry",
-                "start_date",
-                "end_date",
-                "location_city",
-                "location_country",
-                "difficulty",
-                "description",
-                "required_skill1",
-                "required_skill2",
-                "required_skill3",
-            ]
-        ].to_sql("projects", engine, if_exists="append", index=False)
+        # Drop the id column before inserting
+        if 'id' in consultants_df.columns:
+            consultants_df = consultants_df.drop('id', axis=1)
 
         # Insert consultants data
-        consultants_df.to_sql("consultants", engine, if_exists="append", index=False)
+        consultants_df.to_sql('consultants', engine, if_exists='append', index=False)
 
-        print("\nData loaded successfully")
-
-        # Print sample of project descriptions
-        print("\nSample of project descriptions:")
-        print(projects_df[["project_name", "description"]].head())
-
+        print("\nAll data committed to database successfully.")
         connection.commit()
-        print("\nAll data committed to database successfully")
 
     except Exception as e:
         print(f"Error loading data: {e}")

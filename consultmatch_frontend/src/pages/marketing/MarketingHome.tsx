@@ -38,7 +38,7 @@ const MarketingHome = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Why Choose ConsultMatch?
+              Why Choose Wingman?
             </h2>
             <p className="mt-4 text-lg text-gray-600">
               Our platform offers unique advantages for consultants and businesses alike.
@@ -147,7 +147,7 @@ const MarketingHome = () => {
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             <span className="block">Ready to get started?</span>
-            <span className="block text-white">Join ConsultMatch today.</span>
+            <span className="block text-white">Join Wingman today.</span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">

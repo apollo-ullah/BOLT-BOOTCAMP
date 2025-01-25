@@ -11,6 +11,7 @@ import PartnerPortal from './pages/portals/PartnerPortal';
 import PMPortal from './pages/portals/PMPortal';
 import ProjectGallery from './pages/portals/ProjectGallery';
 import StaffProject from './pages/portals/StaffProject';
+import AIEvaluation from './pages/portals/AIEvaluation';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -95,6 +96,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <StaffProject />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-evaluation/:projectId"
+            element={
+              <ProtectedRoute>
+                <AIEvaluation />
               </ProtectedRoute>
             }
           />

@@ -20,7 +20,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, CheckCircleOutline } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, CheckCircleOutline, AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material';
 
 interface Project {
   id: number;
@@ -69,7 +69,8 @@ const StaffProject = () => {
   const steps = [
     'Project Review',
     'Generate Recommendations',
-    'Review Matches',
+    'Review Top 10',
+    'AI Analysis',
     'Finalize Team'
   ];
 
@@ -245,11 +246,24 @@ const StaffProject = () => {
   };
 
   const renderMatchScore = (score: number) => {
-    const percentage = Math.round(score * 100);
+    // Apply the curve: map scores from [0.4-0.67] to [60-90]
+    const minInput = 0.4;  // Minimum expected score
+    const maxInput = 0.67; // Maximum expected score
+    const minOutput = 60;  // Minimum displayed score
+    const maxOutput = 90;  // Maximum displayed score
+    
+    // Linear transformation formula
+    let percentage = Math.round(
+      ((score - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput
+    );
+    
+    // Clamp the value between minOutput and maxOutput
+    percentage = Math.max(minOutput, Math.min(maxOutput, percentage));
+    
     const getColor = () => {
       if (percentage >= 80) return 'success';
-      if (percentage >= 60) return 'info';
-      if (percentage >= 40) return 'warning';
+      if (percentage >= 70) return 'info';
+      if (percentage >= 60) return 'warning';
       return 'error';
     };
 
@@ -296,106 +310,167 @@ const StaffProject = () => {
   };
 
   const renderRecommendations = () => {
-    if (!project) return null;
-    
-    const projectSkills = [
-      project.required_skill1,
-      project.required_skill2,
-      project.required_skill3
-    ].filter(Boolean);
+    if (!recommendedMatches.length) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="text.secondary">
+            No matches found. Try adjusting project requirements.
+          </Typography>
+        </Box>
+      );
+    }
 
     return (
       <Box>
-        <Typography variant="h6" gutterBottom>
-          Recommended Matches
+        <Typography variant="h5" gutterBottom>
+          Top Recommended Consultants
         </Typography>
-        {recommendedMatches.length === 0 ? (
-          <Alert severity="info">No matches found. Try adjusting your project requirements.</Alert>
-        ) : (
-          <Grid container spacing={3}>
-            {recommendedMatches.map((match, index) => (
-              <Grid item xs={12} key={match.consultant.id}>
-                <Card sx={{ 
-                  position: 'relative',
-                  '&:hover': {
-                    boxShadow: 6,
-                    transform: 'translateY(-2px)',
-                    transition: 'all 0.2s'
-                  }
-                }}>
-                  <CardContent>
-                    <Grid container spacing={3}>
-                      <Grid item xs={12} md={4}>
-                        <Stack spacing={2}>
-                          <Box>
-                            <Typography variant="h6">
-                              {match.consultant.first_name} {match.consultant.last_name}
-                            </Typography>
-                            <Typography color="text.secondary">
-                              {match.consultant.seniority_level} • {match.consultant.years_of_experience} years exp.
-                            </Typography>
-                          </Box>
-                          {renderMatchScore(match.match_score)}
-                        </Stack>
-                      </Grid>
-                      
-                      <Grid item xs={12} md={4}>
-                        <Box>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Project Required Skills
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-                            {projectSkills.map((skill) => (
-                              <Chip 
-                                key={skill}
-                                label={skill}
-                                size="small"
-                                sx={{ 
-                                  mb: 1,
-                                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                                  color: '#1976d2',
-                                }}
-                              />
-                            ))}
-                          </Stack>
-                          
-                          <Typography variant="subtitle2" gutterBottom>
-                            Consultant Skills
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            {[match.consultant.skill1, match.consultant.skill2, match.consultant.skill3]
-                              .filter(Boolean)
-                              .map((skill) => renderSkillChip(skill, projectSkills))
-                            }
-                          </Stack>
-                        </Box>
-                      </Grid>
+        <Typography color="text.secondary" paragraph>
+          Found {recommendedMatches.length} potential matches based on skills, experience, and availability.
+        </Typography>
 
-                      <Grid item xs={12} md={4}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Match Reasons
-                        </Typography>
-                        <List dense>
-                          {match.match_reasons.map((reason, idx) => (
-                            <ListItem key={idx} sx={{ py: 0 }}>
-                              <ListItemIcon sx={{ minWidth: 32 }}>
-                                <CheckCircleOutline fontSize="small" color="success" />
-                              </ListItemIcon>
-                              <ListItemText 
-                                primary={reason}
-                                primaryTypographyProps={{ variant: 'body2' }}
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
+        <Grid container spacing={3}>
+          {recommendedMatches.map(({ consultant, score, reasons }, index) => (
+            <Grid item xs={12} md={6} key={consultant.id}>
+              <Card 
+                sx={{ 
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4
+                  }
+                }}
+              >
+                {/* Top rank indicator for top 3 */}
+                {index < 3 && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      boxShadow: 2
+                    }}
+                  >
+                    #{index + 1}
+                  </Box>
+                )}
+
+                <CardContent>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h6" gutterBottom>
+                      {consultant.first_name} {consultant.last_name}
+                    </Typography>
+                    <Typography color="text.secondary" variant="subtitle2">
+                      {consultant.seniority_level} • {consultant.years_of_experience} years exp.
+                    </Typography>
+                  </Box>
+
+                  {/* Match Score */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Match Score
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={score * 100} 
+                        sx={{ 
+                          flexGrow: 1,
+                          height: 8,
+                          borderRadius: 1
+                        }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: 45 }}>
+                        {Math.round(score * 100)}%
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Skills */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Skills
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                      {[consultant.skill1, consultant.skill2, consultant.skill3]
+                        .filter(Boolean)
+                        .map((skill, i) => (
+                          <Chip 
+                            key={i} 
+                            label={skill} 
+                            size="small"
+                            sx={{ 
+                              bgcolor: 'background.default',
+                              '& .MuiChip-label': { px: 1 }
+                            }}
+                          />
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  {/* Match Reasons */}
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Match Reasons
+                    </Typography>
+                    <List dense disablePadding>
+                      {reasons.map((reason, i) => (
+                        <ListItem key={i} disablePadding sx={{ mb: 0.5 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <CheckCircleOutline color="success" fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={reason}
+                            primaryTypographyProps={{
+                              variant: 'body2',
+                              color: 'text.secondary'
+                            }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+
+                  {/* Availability */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Available: {consultant.current_availability}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => setActiveStep(1)}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            endIcon={<AutoAwesomeIcon />}
+            onClick={() => setActiveStep(3)}
+          >
+            Continue to AI Analysis
+          </Button>
+        </Box>
       </Box>
     );
   };

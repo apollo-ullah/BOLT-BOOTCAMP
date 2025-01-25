@@ -4,21 +4,25 @@
 
 :root {
   /* Primary colors */
-  --color-primary-dark: #004d4d;
+  --color-primary-dark: #013f4f; /* Deeper teal-blue */
   --color-primary: #00796b;
-  --color-primary-light: #4caf50;
+  --color-primary-light: #45b649; /* Vibrant green */
   --color-primary-lighter: #81c784;
 
   /* Background gradients */
   --gradient-primary: linear-gradient(
-    135deg,
+    120deg,
     var(--color-primary-dark) 0%,
+    var(--color-primary-dark) 30%,
+    var(--color-primary) 60%,
     var(--color-primary-light) 100%
   );
   --gradient-hover: linear-gradient(
-    135deg,
-    var(--color-primary-dark) 20%,
-    var(--color-primary-light) 80%
+    120deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary-dark) 40%,
+    var(--color-primary) 70%,
+    var(--color-primary-light) 100%
   );
 
   /* Text colors */

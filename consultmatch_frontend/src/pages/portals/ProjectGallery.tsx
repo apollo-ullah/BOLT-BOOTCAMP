@@ -276,7 +276,7 @@ export default function ProjectGallery() {
 
   const renderProjects = (filteredProjects: Project[]) => {
     if (!filteredProjects || filteredProjects.length === 0) {
-      return (
+        return (
         <Grid item xs={12} key="no-projects">
           <Box sx={{ 
             textAlign: 'center', 
@@ -301,58 +301,58 @@ export default function ProjectGallery() {
 
       return (
         <Grid item xs={12} sm={6} md={4} key={projectKey}>
-          <Card sx={{ 
-            height: '100%', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            borderRadius: 3,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            }
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Typography variant="h6" component="div" gutterBottom sx={{ 
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  color: '#1a73e8',
-                  flex: 1,
-                  mr: 2
-                }}>
-                  {project.project_name}
-                </Typography>
-                <Chip
-                  label={project.difficulty}
-                  size="small"
-                  sx={{ 
-                    bgcolor: project.difficulty.toLowerCase() === 'hard' 
-                      ? 'rgba(211, 47, 47, 0.1)'
-                      : project.difficulty.toLowerCase() === 'expert'
-                      ? 'rgba(156, 39, 176, 0.1)'
-                      : project.difficulty.toLowerCase() === 'medium'
-                      ? 'rgba(245, 124, 0, 0.1)'
-                      : 'rgba(46, 125, 50, 0.1)',
-                    color: project.difficulty.toLowerCase() === 'hard'
-                      ? '#d32f2f'
-                      : project.difficulty.toLowerCase() === 'expert'
-                      ? '#9c27b0'
-                      : project.difficulty.toLowerCase() === 'medium'
-                      ? '#f57c00'
-                      : '#2e7d32',
-                    fontWeight: 500,
-                    flexShrink: 0
-                  }}
-                />
-              </Box>
+        <Card sx={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          borderRadius: 3,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          }
+        }}>
+          <CardContent sx={{ p: 3 }}>
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Typography variant="h6" component="div" gutterBottom sx={{ 
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                color: '#1a73e8',
+                flex: 1,
+                mr: 2
+              }}>
+                {project.project_name}
+              </Typography>
+              <Chip
+                label={project.difficulty}
+                size="small"
+                sx={{ 
+                  bgcolor: project.difficulty.toLowerCase() === 'hard' 
+                    ? 'rgba(211, 47, 47, 0.1)'
+                    : project.difficulty.toLowerCase() === 'expert'
+                    ? 'rgba(156, 39, 176, 0.1)'
+                    : project.difficulty.toLowerCase() === 'medium'
+                    ? 'rgba(245, 124, 0, 0.1)'
+                    : 'rgba(46, 125, 50, 0.1)',
+                  color: project.difficulty.toLowerCase() === 'hard'
+                    ? '#d32f2f'
+                    : project.difficulty.toLowerCase() === 'expert'
+                    ? '#9c27b0'
+                    : project.difficulty.toLowerCase() === 'medium'
+                    ? '#f57c00'
+                    : '#2e7d32',
+                  fontWeight: 500,
+                  flexShrink: 0
+                }}
+              />
+            </Box>
 
-              <Stack spacing={2}>
-                <Box>
+            <Stack spacing={2}>
+              <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Industry
-                  </Typography>
+                </Typography>
                   <Chip
                     label={project.preferred_industry}
                     size="small"
@@ -362,12 +362,12 @@ export default function ProjectGallery() {
                       fontWeight: 500
                     }}
                   />
-                </Box>
+              </Box>
 
-                <Box>
+              <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Required Skills
-                  </Typography>
+                </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
                     {[project.required_skill1, project.required_skill2, project.required_skill3]
                       .filter(skill => skill)
@@ -386,23 +386,23 @@ export default function ProjectGallery() {
                       />
                     ))}
                   </Stack>
-                </Box>
+                          </Box>
 
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Location
-                  </Typography>
+                            </Typography>
                   <Typography variant="body2">
                     {project.location_city}, {project.location_country}
-                  </Typography>
-                </Box>
+                            </Typography>
+                          </Box>
 
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Timeline
-                  </Typography>
+                            </Typography>
                   {renderProjectTimeline(project)}
-                </Box>
+              </Box>
 
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -423,7 +423,7 @@ export default function ProjectGallery() {
               {canManageProjects && (
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                   <Button
-                    size="small"
+                      size="small"
                     startIcon={<GroupIcon />}
                     onClick={() => handleStaffProject(project.id)}
                     color="primary"
@@ -437,18 +437,18 @@ export default function ProjectGallery() {
                   >
                     Edit
                   </Button>
-                </Box>
+              </Box>
               )}
-            </CardContent>
-          </Card>
-        </Grid>
+          </CardContent>
+        </Card>
+      </Grid>
       );
     });
   };
 
   const renderConsultants = (filteredConsultants: Consultant[]) => {
     if (!filteredConsultants || filteredConsultants.length === 0) {
-      return (
+        return (
         <Grid item xs={12} key="no-consultants">
           <Box sx={{ 
             textAlign: 'center', 
@@ -468,30 +468,30 @@ export default function ProjectGallery() {
     return filteredConsultants.map((consultant) => (
       <Grid item xs={12} sm={6} md={4} key={`consultant-${consultant.id}`}>
         <Card sx={{ 
-          height: '100%', 
-          display: 'flex', 
-          flexDirection: 'column',
-          borderRadius: 3,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column',
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             cursor: 'pointer'
-          }
-        }}
+            }
+          }}
         onClick={() => setSelectedConsultant(consultant)}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Typography variant="h6" component="div" gutterBottom sx={{ 
-                fontSize: '1.1rem',
-                fontWeight: 600,
+                  fontSize: '1.1rem', 
+                  fontWeight: 600,
                 color: '#1a73e8',
                 flex: 1,
                 mr: 2
-              }}>
-                {consultant.first_name} {consultant.last_name}
-              </Typography>
+                }}>
+                  {consultant.first_name} {consultant.last_name}
+                </Typography>
               <Chip
                 label={consultant.seniority_level}
                 size="small"
@@ -502,7 +502,7 @@ export default function ProjectGallery() {
                 }}
               />
             </Box>
-
+            
             <Stack spacing={2}>
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -542,7 +542,7 @@ export default function ProjectGallery() {
                   ))}
                 </Stack>
               </Box>
-
+              
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Location
@@ -551,7 +551,7 @@ export default function ProjectGallery() {
                   {consultant.location_flexibility}
                 </Typography>
               </Box>
-
+              
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Experience
@@ -565,7 +565,7 @@ export default function ProjectGallery() {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Availability
                 </Typography>
-                <Chip
+                    <Chip
                   label={(() => {
                     if (!consultant.current_availability) return "Not Available";
                     const [startStr, endStr] = consultant.current_availability.split(" to ");
@@ -575,8 +575,8 @@ export default function ProjectGallery() {
                     const isCurrentlyAvailable = now >= start && now <= end;
                     return isCurrentlyAvailable ? "Currently Available" : `Available ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
                   })()}
-                  size="small"
-                  sx={{ 
+                      size="small"
+                      sx={{ 
                     bgcolor: consultant.current_availability && (() => {
                       const [startStr, endStr] = consultant.current_availability.split(" to ");
                       const start = new Date(startStr);
@@ -928,16 +928,16 @@ export default function ProjectGallery() {
       <Box sx={{ mb: 4 }}>
         <Stack spacing={3}>
           {/* Search */}
-          <TextField
+        <TextField
             fullWidth
             variant="outlined"
-            size="small"
+          size="small"
             placeholder={showConsultants ? "Search consultants by name, skills, or location..." : "Search projects by name, skills, or location..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
-            }}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+          }}
             sx={{
               '& .MuiOutlinedInput-root': {
                 bgcolor: 'white',
@@ -949,7 +949,7 @@ export default function ProjectGallery() {
           />
 
           {/* Filters and Sort */}
-          {showConsultants ? (
+        {showConsultants ? (
             <Stack direction="row" spacing={2} alignItems="center">
               {/* Seniority Filter */}
               <ButtonGroup variant="outlined" size="small" sx={{ bgcolor: 'white' }}>
@@ -959,7 +959,7 @@ export default function ProjectGallery() {
                 >
                   All Levels
                 </Button>
-                <Button
+            <Button
                   onClick={() => setSeniorityFilter('intern')}
                   variant={seniorityFilter === 'intern' ? 'contained' : 'outlined'}
                 >
@@ -983,12 +983,12 @@ export default function ProjectGallery() {
                 >
                   Senior
                 </Button>
-              </ButtonGroup>
+            </ButtonGroup>
 
               {/* Sort by Experience */}
               <ButtonGroup variant="outlined" size="small" sx={{ bgcolor: 'white' }}>
-                <Button
-                  onClick={() => {
+              <Button
+                onClick={() => {
                     setSortBy('years_of_experience');
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
@@ -999,7 +999,7 @@ export default function ProjectGallery() {
                   }} />}
                 >
                   Experience
-                </Button>
+              </Button>
               </ButtonGroup>
 
               <Button
@@ -1053,7 +1053,7 @@ export default function ProjectGallery() {
                 >
                   Expert
                 </Button>
-              </ButtonGroup>
+            </ButtonGroup>
 
               {/* Sort Options */}
               <ButtonGroup variant="outlined" size="small" sx={{ bgcolor: 'white' }}>
@@ -1747,7 +1747,7 @@ export default function ProjectGallery() {
                   />
                 </Grid>
               </Grid>
-            </Box>
+              </Box>
           )}
         </DialogContent>
         <DialogActions>
@@ -1773,7 +1773,7 @@ export default function ProjectGallery() {
           <DialogContent>
             <Box component="form" noValidate sx={{ mt: 1 }}>
               <input type="hidden" name="id" value={editingProject?.id || ''} />
-              <Grid container spacing={2}>
+            <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
                     required
@@ -1786,7 +1786,7 @@ export default function ProjectGallery() {
                     })}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                   <TextField
                     required
                     fullWidth
@@ -1797,8 +1797,8 @@ export default function ProjectGallery() {
                       preferred_industry: e.target.value
                     })}
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
+              </Grid>
+              <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Difficulty</InputLabel>
                     <Select
@@ -1814,7 +1814,7 @@ export default function ProjectGallery() {
                       <MenuItem value="expert">Expert</MenuItem>
                     </Select>
                   </FormControl>
-                </Grid>
+              </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     required
@@ -1923,8 +1923,8 @@ export default function ProjectGallery() {
                     })}
                   />
                 </Grid>
-              </Grid>
-            </Box>
+            </Grid>
+          </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEditingProject(null)}>Cancel</Button>

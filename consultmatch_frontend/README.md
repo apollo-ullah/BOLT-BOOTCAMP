@@ -1,4 +1,4 @@
-# ConsultMatch - Consultant Matching Platform
+# Wingman - Consultant Matching Platform
 
 A modern web application that connects consultants with projects using intelligent matching algorithms.
 

@@ -1,5 +1,5 @@
 // App-wide constants
-export const APP_NAME = 'ConsultMatch';
+export const APP_NAME = 'Wingman';
 export const APP_DESCRIPTION = 'Connecting consultants with projects';
 
 // Role definitions

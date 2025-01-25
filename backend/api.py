@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import List
 from pydantic import BaseModel
 import traceback
+from algo import filter_consultants_phase1, refine_consultants_phase2
 
 app = FastAPI()
 
@@ -283,68 +284,74 @@ async def recommend_consultants(project_id: int):
             match_score = 0.0
             match_reasons = []
 
-            # Check skill matches (more lenient matching)
+            # Check skill matches
             project_skills = [
                 project['required_skill1'].lower(),
                 project['required_skill2'].lower() if project['required_skill2'] else None,
                 project['required_skill3'].lower() if project['required_skill3'] else None
             ]
+            project_skills = [s for s in project_skills if s]  # Remove None values
+            
             consultant_skills = [
                 consultant['skill1'].lower(),
                 consultant['skill2'].lower() if consultant['skill2'] else None,
                 consultant['skill3'].lower() if consultant['skill3'] else None
             ]
+            consultant_skills = [s for s in consultant_skills if s]  # Remove None values
 
-            # More lenient skill matching
+            # Count both exact and partial skill matches
             skill_matches = 0
             for ps in project_skills:
-                if ps:
-                    for cs in consultant_skills:
-                        if cs and (ps in cs or cs in ps):
-                            skill_matches += 1
-                            break
+                for cs in consultant_skills:
+                    if ps == cs:  # Exact match
+                        skill_matches += 1
+                        break
+                    elif ps in cs or cs in ps:  # Partial match
+                        skill_matches += 0.5
+                        break
             
             if skill_matches > 0:
-                score_boost = skill_matches / len([s for s in project_skills if s])
+                score_boost = skill_matches / len(project_skills)
                 match_score += score_boost * 0.5  # Skills are 50% of the score
                 match_reasons.append(f"Matches {skill_matches} required skills")
 
-            # More lenient industry matching
+            # Check industry match with partial matching
             project_industry = project['preferred_industry'].lower()
             consultant_industry = (consultant['past_project_industry'] or '').lower()
             
-            # Check for partial industry matches
-            if (project_industry in consultant_industry or 
-                consultant_industry in project_industry or
-                any(word in consultant_industry for word in project_industry.split())):
-                match_score += 0.3  # Industry match is 30% of the score
-                match_reasons.append("Has experience in the required industry")
+            if project_industry == consultant_industry:
+                match_score += 0.3  # Full industry match (30%)
+                match_reasons.append("Has experience in the exact industry")
+            elif any(word in consultant_industry for word in project_industry.split()):
+                match_score += 0.15  # Partial industry match (15%)
+                match_reasons.append("Has experience in a related industry")
 
             # Check seniority based on project difficulty
             difficulty_seniority_map = {
-                'easy': ['intern', 'junior', 'mid-level', 'senior', 'expert'],
-                'medium': ['junior', 'mid-level', 'senior', 'expert'],
-                'hard': ['mid-level', 'senior', 'expert'],
-                'expert': ['senior', 'expert']
+                'easy': ['junior', 'mid-level', 'senior', 'expert'],
+                'medium': ['mid-level', 'senior', 'expert'],
+                'hard': ['senior', 'expert'],
+                'expert': ['expert']
             }
             
-            if consultant['seniority_level'].lower() in difficulty_seniority_map[project['difficulty'].lower()]:
+            consultant_level = consultant['seniority_level'].lower()
+            if consultant_level in difficulty_seniority_map[project['difficulty'].lower()]:
                 match_score += 0.2  # Seniority match is 20% of the score
                 match_reasons.append(f"Seniority level ({consultant['seniority_level']}) matches project difficulty")
 
-            # Lower the threshold for including consultants
-            if match_score >= 0.2:  # Changed from 0.3 to 0.2
+            # Include consultants with a match score above 0.3
+            if match_score >= 0.3:  # Increased threshold back to 0.3 for quality matches
                 matches.append({
                     "consultant": consultant,
-                    "match_score": round(match_score, 2),  # Round score to 2 decimal places
+                    "match_score": round(match_score, 2),
                     "match_reasons": match_reasons
                 })
 
         # Sort matches by score
         matches.sort(key=lambda x: x['match_score'], reverse=True)
 
-        # Return top 5 matches
-        return matches[:5]
+        # Return all matches (no limit)
+        return matches
 
     except Exception as e:
         print("Error recommending consultants:", str(e))
@@ -369,6 +376,74 @@ async def get_project(project_id: int):
         print("Error fetching project:", str(e))
         print("Traceback:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to fetch project: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/recommend-phase1/{project_id}")
+async def recommend_consultants_phase1(project_id: int):
+    """Returns the initial filtered pool of consultants"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Get project details
+        cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+        project = cur.fetchone()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Get all consultants
+        cur.execute("SELECT * FROM consultants")
+        consultants = cur.fetchall()
+
+        # Apply Phase 1 filtering
+        filtered_consultants = filter_consultants_phase1(consultants, project)
+
+        return {
+            "project_id": project_id,
+            "count": len(filtered_consultants),
+            "consultants": filtered_consultants
+        }
+    except Exception as e:
+        print("Error in phase 1 filtering:", str(e))
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/recommend-phase2/{project_id}")
+async def recommend_consultants_phase2(project_id: int):
+    """Returns the final refined list of up to 20 best matches"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Get project details
+        cur.execute("SELECT * FROM projects WHERE id = %s", (project_id,))
+        project = cur.fetchone()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Get all consultants
+        cur.execute("SELECT * FROM consultants")
+        consultants = cur.fetchall()
+
+        # Phase 1: Initial filtering
+        phase1_consultants = filter_consultants_phase1(consultants, project)
+        
+        # Phase 2: Refined scoring and selection
+        final_matches = refine_consultants_phase2(phase1_consultants, project)
+
+        return {
+            "project_id": project_id,
+            "count_phase1": len(phase1_consultants),
+            "count_phase2": len(final_matches),
+            "matches": final_matches
+        }
+    except Exception as e:
+        print("Error in phase 2 recommendations:", str(e))
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         conn.close()
